@@ -1,0 +1,40 @@
+{
+  "name": "ЗаправкаТут — топливо рядом",
+  "short_name": "ЗаправкаТут",
+  "description": "Краудсорс-карта актуальных цен и наличия топлива на АЗС в реальном времени.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#000000",
+  "theme_color": "#0a84ff",
+  "lang": "ru",
+  "categories": ["navigation", "travel", "utilities"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Обновить данные",
+      "short_name": "Репорт",
+      "url": "/?action=report"
+    }
+  ]
+}

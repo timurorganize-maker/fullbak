@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Light theme (iOS / Yandex-inspired, warm neutrals) */
+  --bg: 242 242 247;
+  --bg-elevated: 255 255 255;
+  --surface: 255 255 255;
+  --surface-2: 244 244 248;
+  --border: 226 226 232;
+  --fg: 17 17 20;
+  --fg-muted: 96 96 108;
+  --fg-subtle: 150 150 162;
+  --brand: 10 132 255; /* iOS blue */
+  --brand-fg: 255 255 255;
+
+  --avail: 48 176 96;   /* green - есть топливо */
+  --low: 245 176 24;    /* amber - мало/очередь */
+  --out: 235 64 52;     /* red - нет топлива */
+  --stale: 158 158 170; /* gray - устарело */
+
+  --font-sans: 'Inter';
+}
+
+.dark {
+  --bg: 0 0 0;
+  --bg-elevated: 28 28 30;
+  --surface: 28 28 30;
+  --surface-2: 44 44 46;
+  --border: 58 58 62;
+  --fg: 245 245 247;
+  --fg-muted: 174 174 184;
+  --fg-subtle: 122 122 132;
+  --brand: 10 132 255;
+  --brand-fg: 255 255 255;
+
+  --avail: 48 209 108;
+  --low: 255 196 46;
+  --out: 255 82 72;
+  --stale: 110 110 120;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  height: 100%;
+  overscroll-behavior-y: none;
+}
+
+body {
+  background-color: rgb(var(--bg));
+  color: rgb(var(--fg));
+  font-family: var(--font-sans), system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Fixed app viewport, no page scroll — the map + sheets manage their own scroll */
+#app-root {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* Tabular numbers for prices — critical to read at a glance */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* Hide scrollbars but keep scrolling */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* MapLibre overrides to match the design language */
+.maplibregl-ctrl-attrib,
+.maplibregl-ctrl-logo {
+  opacity: 0.45;
+  font-size: 10px;
+}
+.maplibregl-ctrl-bottom-left,
+.maplibregl-ctrl-bottom-right {
+  margin-bottom: calc(env(safe-area-inset-bottom) + 4px);
+}
+.maplibregl-canvas:focus {
+  outline: none;
+}
