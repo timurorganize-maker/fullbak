@@ -1,0 +1,11 @@
+# Godot
+.godot/
+.import/
+*.translation
+# сборка
+build/
+*.apk
+*.aab
+*.idsig
+# Android-шаблон ставится при сборке (из export templates)
+android/
