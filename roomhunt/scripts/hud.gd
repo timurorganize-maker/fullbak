@@ -22,10 +22,12 @@ func _ready() -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root)
 
+	var inset := _safe_insets()   # вырез экрана: x — слева, y — сверху, z — справа
+
 	# --- левый верхний угол: счётчик и подсказка
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", _box(Color(0.06, 0.05, 0.1, 0.62), 16, 14))
-	panel.position = Vector2(24, 18)
+	panel.position = Vector2(24 + inset.x, 18 + inset.y)
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(panel)
 	var vb := VBoxContainer.new()
@@ -43,7 +45,7 @@ func _ready() -> void:
 	_room.add_theme_stylebox_override("normal", _box(Color(0.06, 0.05, 0.1, 0.5), 12, 8))
 	_room.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	_room.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	_room.position.y = 18
+	_room.position.y = 18 + inset.y
 	root.add_child(_room)
 
 	# --- правый верхний угол: время
@@ -51,7 +53,7 @@ func _ready() -> void:
 	_time.add_theme_stylebox_override("normal", _box(Color(0.06, 0.05, 0.1, 0.5), 12, 8))
 	_time.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	_time.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	_time.position = Vector2(-24, 18)
+	_time.position = Vector2(-24 - inset.z, 18 + inset.y)
 	root.add_child(_time)
 
 	# --- сообщение внизу по центру
@@ -65,6 +67,18 @@ func _ready() -> void:
 	root.add_child(_toast)
 
 	_build_win(root)
+
+## Отступы безопасной области экрана (вырез камеры) в координатах вьюпорта: x — слева, y — сверху, z — справа.
+func _safe_insets() -> Vector3:
+	var win := DisplayServer.window_get_size()
+	var sa := DisplayServer.get_display_safe_area()
+	var vp := get_viewport().get_visible_rect().size
+	if win.x <= 0 or win.y <= 0 or sa.size.x <= 0:
+		return Vector3.ZERO
+	var sx := vp.x / win.x
+	var sy := vp.y / win.y
+	return Vector3(maxf(0.0, sa.position.x) * sx, maxf(0.0, sa.position.y) * sy,
+		maxf(0.0, win.x - sa.end.x) * sx)
 
 func _label(t: String, size: int, col: Color) -> Label:
 	var l := Label.new()

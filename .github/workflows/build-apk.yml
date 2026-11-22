@@ -1,0 +1,174 @@
+name: Build Android APK (RoomHunt)
+
+# Собирает debug-APK игры из папки roomhunt/ и выкладывает его как artifact
+# (на телефоне: открой запуск workflow → Artifacts → roomhunt-apk → скачай и распакуй zip).
+on:
+  push:
+    paths:
+      - "roomhunt/**"
+      - ".github/workflows/build-apk.yml"
+  pull_request:
+    paths:
+      - "roomhunt/**"
+      - ".github/workflows/build-apk.yml"
+  workflow_dispatch:
+
+env:
+  GODOT_VERSION: "4.3"
+  GODOT_RELEASE: "4.3-stable"
+  GODOT_TEMPLATES_DIR: 4.3.stable
+  ANDROID_BUILD_TOOLS: "34.0.0"
+  ANDROID_PLATFORM: "android-34"
+  ANDROID_NDK: "23.2.8568313"
+  ANDROID_CMAKE: "3.10.2.4988404"
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Godot ${{ env.GODOT_VERSION }} и export templates (кэш)
+        id: godot-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/godot-bin
+            ~/.local/share/godot/export_templates
+          key: godot-${{ env.GODOT_RELEASE }}-android-v1
+
+      - name: Скачать Godot и export templates
+        if: steps.godot-cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          BASE="https://github.com/godotengine/godot-builds/releases/download/${GODOT_RELEASE}"
+          mkdir -p ~/godot-bin
+          curl -fsSL --retry 4 -o /tmp/godot.zip "${BASE}/Godot_v${GODOT_RELEASE}_linux.x86_64.zip"
+          unzip -q /tmp/godot.zip -d ~/godot-bin
+          curl -fsSL --retry 4 -o /tmp/templates.tpz "${BASE}/Godot_v${GODOT_RELEASE}_export_templates.tpz"
+          T=~/.local/share/godot/export_templates/${GODOT_TEMPLATES_DIR}
+          mkdir -p "$T"
+          # для Android нужны только android_* и version.txt
+          unzip -q -o -j /tmp/templates.tpz 'templates/android*' 'templates/version.txt' -d "$T"
+          rm -f /tmp/godot.zip /tmp/templates.tpz
+
+      - name: Установить godot в PATH
+        run: |
+          install -m755 ~/godot-bin/Godot_v${GODOT_RELEASE}_linux.x86_64 /usr/local/bin/godot 2>/dev/null \
+            || sudo install -m755 ~/godot-bin/Godot_v${GODOT_RELEASE}_linux.x86_64 /usr/local/bin/godot
+          godot --version
+
+      - name: Android SDK (platform-tools, build-tools 34, platform 34, NDK, CMake)
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/android-sdk}}"
+          mkdir -p "$SDK_ROOT" 2>/dev/null || sudo mkdir -p "$SDK_ROOT"
+          [ -w "$SDK_ROOT" ] || sudo chown -R "$USER" "$SDK_ROOT"
+          SDKMANAGER="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            curl -fsSL --retry 4 -o /tmp/cmdline-tools.zip \
+              "https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip"
+            unzip -q /tmp/cmdline-tools.zip -d /tmp/cmdline-tools
+            mkdir -p "$SDK_ROOT/cmdline-tools"
+            rm -rf "$SDK_ROOT/cmdline-tools/latest"
+            mv /tmp/cmdline-tools/cmdline-tools "$SDK_ROOT/cmdline-tools/latest"
+          fi
+          yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses > /dev/null || true
+          "$SDKMANAGER" --sdk_root="$SDK_ROOT" \
+            "platform-tools" \
+            "build-tools;${ANDROID_BUILD_TOOLS}" \
+            "platforms;${ANDROID_PLATFORM}" \
+            "cmake;${ANDROID_CMAKE}" \
+            "ndk;${ANDROID_NDK}"
+          echo "SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+
+      - name: Настройки Godot (пути SDK/JDK, debug-keystore)
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.config/godot
+          cat > ~/.config/godot/editor_settings-${GODOT_VERSION}.tres <<EOF
+          [gd_resource type="EditorSettings" format=3]
+
+          [resource]
+          export/android/android_sdk_path = "${SDK_ROOT}"
+          export/android/java_sdk_path = "${JAVA_HOME}"
+          export/android/debug_keystore = "${GITHUB_WORKSPACE}/roomhunt/debug.keystore"
+          export/android/debug_keystore_user = "androiddebugkey"
+          export/android/debug_keystore_pass = "android"
+          EOF
+          # (тот же debug-keystore подхватывается и через переменные окружения)
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_PATH=${GITHUB_WORKSPACE}/roomhunt/debug.keystore" >> "$GITHUB_ENV"
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_USER=androiddebugkey" >> "$GITHUB_ENV"
+          echo "GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD=android" >> "$GITHUB_ENV"
+
+      - name: Импорт ресурсов проекта
+        working-directory: roomhunt
+        run: godot --headless --path . --import
+
+      - name: Автотест — бот проходит игру до экрана победы
+        working-directory: roomhunt
+        run: |
+          set -o pipefail
+          godot --headless --fixed-fps 60 --path . -- --selftest 2>&1 \
+            | grep -v 'mesh_get_surface_count\|Parameter "m" is null' | tail -n 40
+
+      - name: Стресс-тест физики (случайное блуждание, провалы/выход за стены)
+        working-directory: roomhunt
+        run: |
+          set -o pipefail
+          godot --headless --fixed-fps 60 --path . -- --fuzz 2>&1 \
+            | grep -v 'mesh_get_surface_count\|Parameter "m" is null' | tail -n 20
+
+      - name: Установить Android build template (Gradle-сборка, minSdk 24 / targetSdk 34)
+        working-directory: roomhunt
+        run: |
+          set -euo pipefail
+          mkdir -p android/build
+          unzip -q -o ~/.local/share/godot/export_templates/${GODOT_TEMPLATES_DIR}/android_source.zip -d android/build
+          echo -n "${GODOT_TEMPLATES_DIR}" > android/.build_version
+          touch android/build/.gdignore
+
+      - name: Экспорт APK (debug)
+        working-directory: roomhunt
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          godot --headless --path . --export-debug "Android" build/roomhunt.apk
+          ls -la build
+
+      - name: Проверка APK (пакет, SDK, подпись, размер ≤ 150 МБ)
+        working-directory: roomhunt
+        run: |
+          set -euo pipefail
+          APK=build/roomhunt.apk
+          test -f "$APK"
+          BT="$SDK_ROOT/build-tools/${ANDROID_BUILD_TOOLS}"
+          "$BT/aapt2" dump badging "$APK" | grep -E "^package:|sdkVersion|targetSdkVersion" | tee /tmp/badging.txt
+          grep -q "name='com.example.roomhunt'" /tmp/badging.txt
+          grep -q "sdkVersion:'24'" /tmp/badging.txt
+          grep -q "targetSdkVersion:'34'" /tmp/badging.txt
+          "$BT/apksigner" verify --verbose "$APK" | head -5
+          SIZE=$(stat -c %s "$APK")
+          echo "Размер APK: $((SIZE / 1024 / 1024)) МБ"
+          test "$SIZE" -le $((150 * 1024 * 1024))
+
+      - name: Artifact — roomhunt.apk
+        uses: actions/upload-artifact@v4
+        with:
+          name: roomhunt-apk
+          path: roomhunt/build/roomhunt.apk
+          if-no-files-found: error
+          retention-days: 30

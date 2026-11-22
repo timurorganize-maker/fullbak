@@ -3,10 +3,11 @@ extends Node3D
 ## Строит дом из данных GameData: полы, стены с проёмами, двери, лестницы, мебель, торшеры.
 ##
 ## Для скорости на телефоне все статические «коробки» склеиваются в один ArrayMesh на
-## (ячейку 9×9 м × материал), а коллизия — один StaticBody3D на (ячейку × слой).
+## (ячейку 4.5×4.5 м × материал), а коллизия — один StaticBody3D на (ячейку × слой).
 ## Слои физики: 1 = мир (стены/полы, их видит камера), 2 = мебель.
 
-const CELL := 9.0
+const CELL := 4.5          # размер ячейки склейки мешей
+const MAX_TILE := 4.5      # длинные коробки режутся на тайлы, чтобы на меш влияло ≤ 8 ламп (лимит Mobile)
 const LAYER_WORLD := 1
 const LAYER_FURNITURE := 2
 
@@ -144,6 +145,19 @@ func _cell_of(p: Vector3) -> Vector3i:
 	return Vector3i(floori(p.x / CELL), floori(p.z / CELL), level)
 
 func _add_visual(kind: String, center: Vector3, size: Vector3, color: Color, rot_y: float,
+		emission: float) -> void:
+	if kind == "box" and is_zero_approx(rot_y) and (size.x > MAX_TILE or size.z > MAX_TILE):
+		var nx := ceili(size.x / MAX_TILE)
+		var nz := ceili(size.z / MAX_TILE)
+		var piece := Vector3(size.x / nx, size.y, size.z / nz)
+		for i in nx:
+			for j in nz:
+				var c := center + Vector3((i + 0.5) * piece.x - size.x * 0.5, 0.0, (j + 0.5) * piece.z - size.z * 0.5)
+				_add_visual_piece(kind, c, piece, color, rot_y, emission)
+		return
+	_add_visual_piece(kind, center, size, color, rot_y, emission)
+
+func _add_visual_piece(kind: String, center: Vector3, size: Vector3, color: Color, rot_y: float,
 		emission: float) -> void:
 	var cell := _cell_of(center)
 	if not _batches.has(cell):
@@ -342,9 +356,9 @@ func add_floor_lamp(p: Vector3) -> void:
 	var l := OmniLight3D.new()
 	l.position = p + Vector3(0, 1.7, 0)
 	l.light_color = Color(1.0, 0.76, 0.46)
-	l.light_energy = 1.8
-	l.omni_range = 7.5
-	l.omni_attenuation = 1.3
+	l.light_energy = 2.2
+	l.omni_range = 6.5
+	l.omni_attenuation = 1.0
 	l.shadow_enabled = false
 	# двойной параболоид дешевле куба; в Compatibility (нет RenderingDevice) он недоступен
 	l.omni_shadow_mode = OmniLight3D.SHADOW_CUBE if RenderingServer.get_rendering_device() == null else OmniLight3D.SHADOW_DUAL_PARABOLOID

@@ -73,6 +73,8 @@ func _ready() -> void:
 		var tool := ""
 		if a == "--selftest":
 			tool = "res://tools/bot.gd"
+		elif a == "--fuzz":
+			tool = "res://tools/fuzz.gd"
 		elif a.begins_with("--shots"):
 			tool = "res://tools/shots.gd"
 		if tool != "" and ResourceLoader.exists(tool):

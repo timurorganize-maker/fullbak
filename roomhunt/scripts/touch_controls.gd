@@ -174,4 +174,4 @@ func _draw() -> void:
 		draw_circle(tc, _take_radius(), Color(1.0, 0.75, 0.2, 0.85 if tp else 0.62))
 		draw_arc(tc, _take_radius(), 0.0, TAU, 40, Color(1, 1, 1, 0.9), 3.5 * u, true)
 		draw_string(font, tc + Vector2(-_take_radius(), 9.0 * u), take_label, HORIZONTAL_ALIGNMENT_CENTER,
-			_take_radius() * 2.0, int(26 * u), Color(0.12, 0.08, 0.02))
+			_take_radius() * 2.0, int((26 if take_label.length() <= 5 else 21) * u), Color(0.12, 0.08, 0.02))

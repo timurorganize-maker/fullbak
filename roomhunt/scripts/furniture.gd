@@ -72,7 +72,7 @@ static func _bookshelf(b: HouseBuilder, p: Vector3, size: Vector3, col: Color, r
 	# каркас: задняя стенка и боковины, доски полок
 	if books_along_z:
 		# стеллаж вдоль оси Z (стоит у стены X): глубина — size.x
-		b.box(p + Vector3(0, size.y * 0.5, 0), Vector3(size.x, size.y, size.z), _dk(col, 0.6), false)
+		b.box(p + Vector3(0, size.y * 0.5, 0), Vector3(size.x, size.y, size.z), _dk(col, 0.78), false)
 		for i in rows.size():
 			var ry: float = rows[i]
 			b.box(p + Vector3(0, ry, 0), Vector3(size.x, 0.05, size.z), col, false)
@@ -87,7 +87,7 @@ static func _bookshelf(b: HouseBuilder, p: Vector3, size: Vector3, col: Color, r
 				z += w + 0.005
 		b.collider(p + Vector3(0, size.y * 0.5, 0), size)
 	else:
-		b.box(p + Vector3(0, size.y * 0.5, 0), Vector3(size.x, size.y, size.z), _dk(col, 0.6), false)
+		b.box(p + Vector3(0, size.y * 0.5, 0), Vector3(size.x, size.y, size.z), _dk(col, 0.78), false)
 		for i in rows.size():
 			var ry: float = rows[i]
 			b.box(p + Vector3(0, ry, 0), Vector3(size.x, 0.05, size.z), col, false)
@@ -193,7 +193,7 @@ static func _kitchen(b: HouseBuilder) -> void:
 # --- кабинет (заперт) --------------------------------------------------------
 
 static func _study(b: HouseBuilder) -> void:
-	var wood := Color(0.30, 0.19, 0.11)
+	var wood := Color(0.45, 0.29, 0.17)
 	_rug(b, Vector3(22.0, 0, -5.4), Vector2(4.4, 3.0), Color(0.5, 0.15, 0.15))
 	# стол у северной стены
 	_table(b, Vector3(22.0, 0, -9.2), Vector3(2.0, 0.76, 0.8), wood)
